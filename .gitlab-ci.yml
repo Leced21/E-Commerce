@@ -9,8 +9,6 @@ variables:
   IMAGE_TAG: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
 
 # Login au registry Docker de GitLab pour les jobs qui en ont besoin
-before_script:
-  - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
 # --------- TESTS ---------
 test:
@@ -41,6 +39,8 @@ build:
   image: docker:27.3
   services:
     - docker:27.3-dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
     - docker build -f infra/docker/backend.Dockerfile -t "$IMAGE_TAG" --build-arg ENVIRONMENT=prod .
     - docker push "$IMAGE_TAG"
