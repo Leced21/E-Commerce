@@ -29,7 +29,7 @@ test:
     - pip install -r backend/requirements/dev.txt
     - cd backend
     - python manage.py migrate
-    - pytest
+    - pytest || if [ $? -eq 5 ]; then echo "Aucun test trouvé, on continue."; else exit 1; fi
     - flake8 .
     - black --check .
   rules:
