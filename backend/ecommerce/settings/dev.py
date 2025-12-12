@@ -3,7 +3,6 @@ import os
 
 DEBUG = True
 
-# Toolbar activable seulement si on le demande ET si le package est installé
 if os.getenv("DJANGO_USE_DEBUG_TOOLBAR", "0") == "1":
     try:
         import debug_toolbar  # noqa: F401

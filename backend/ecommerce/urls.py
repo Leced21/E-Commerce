@@ -26,7 +26,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 ]
 
-if settings.DEBUG:
+# Debug toolbar uniquement si:
+# - DEBUG est True
+# - et l'app "debug_toolbar" est dans INSTALLED_APPS
+if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:
     urlpatterns += [
         path("__debug__/", include("debug_toolbar.urls")),
     ]
