@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# venv
+backend/venv/
+
+# Django
+*.log
+staticfiles/
+media/
+
+# VSCode
+.vscode/
