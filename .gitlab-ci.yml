@@ -6,7 +6,7 @@ stages:
 
 variables:
   PROJECT_NAME: "ecommerce"
-  IMAGE_TAG: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+  IMAGE_TAG: "$CI_REGISTRY_IMAGE:latest"
 
 # Login au registry Docker de GitLab pour les jobs qui en ont besoin
 
@@ -58,8 +58,8 @@ deploy_dev:
     - local-runner
   script:
     - echo "Déploiement DEV sur la machine locale"
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-    - docker pull "$IMAGE_TAG"
+    - docker login -u $env:CI_REGISTRY_USER -p $env:CI_REGISTRY_PASSWORD $env:CI_REGISTRY
+    - docker pull $env:IMAGE_TAG
     - docker compose -f docker-compose.dev.yml up -d --remove-orphans
   needs:
     - build
@@ -73,8 +73,8 @@ deploy_prod:
     - local-runner
   script:
     - echo "Déploiement PROD sur la machine locale"
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-    - docker pull "$IMAGE_TAG"
+    - docker login -u $env:CI_REGISTRY_USER -p $env:CI_REGISTRY_PASSWORD $env:CI_REGISTRY
+    - docker pull $env:IMAGE_TAG
     - docker compose -f docker-compose.prod.yml up -d --remove-orphans
   needs:
     - build
