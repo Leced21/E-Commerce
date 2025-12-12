@@ -64,29 +64,36 @@ deploy_dev:
     - echo "$SSH_PRIVATE_KEY_DEV" > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
     - export REPO_SSH_URL="git@gitlab.com:$CI_PROJECT_PATH.git"
-    - ssh -o StrictHostKeyChecking=no "$SSH_USER_DEV@$SSH_HOST_DEV" "
-        set -e
-        if [ ! -d /opt/$PROJECT_NAME ]; then
-          mkdir -p /opt/$PROJECT_NAME
-          cd /opt/$PROJECT_NAME
-          git clone '$REPO_SSH_URL' .
-        else
-          cd /opt/$PROJECT_NAME
-          git fetch origin
-          git checkout $CI_COMMIT_REF_NAME
-          git reset --hard origin/$CI_COMMIT_REF_NAME
-        fi
-        docker login -u '$CI_REGISTRY_USER' -p '$CI_REGISTRY_PASSWORD' $CI_REGISTRY
-        export IMAGE_TAG='$IMAGE_TAG' \
-               POSTGRES_PASSWORD='$POSTGRES_PASSWORD_DEV' \
-               DJANGO_SECRET_KEY_DEV='$DJANGO_SECRET_KEY_DEV' \
-               DJANGO_ALLOWED_HOSTS_DEV='$DJANGO_ALLOWED_HOSTS_DEV'
-        docker compose -f docker-compose.dev.yml up -d --remove-orphans
-      "
+    - |
+      ssh -o StrictHostKeyChecking=no "$SSH_USER_DEV@$SSH_HOST_DEV" << EOF
+      set -e
+
+      if [ ! -d /opt/$PROJECT_NAME ]; then
+        mkdir -p /opt/$PROJECT_NAME
+        cd /opt/$PROJECT_NAME
+        git clone "$REPO_SSH_URL" .
+      else
+        cd /opt/$PROJECT_NAME
+        git fetch origin
+        git checkout "$CI_COMMIT_REF_NAME"
+        git reset --hard "origin/$CI_COMMIT_REF_NAME"
+      fi
+
+      docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+
+      export IMAGE_TAG="$IMAGE_TAG" \
+             POSTGRES_PASSWORD="$POSTGRES_PASSWORD_DEV" \
+             DJANGO_SECRET_KEY_DEV="$DJANGO_SECRET_KEY_DEV" \
+             DJANGO_ALLOWED_HOSTS_DEV="$DJANGO_ALLOWED_HOSTS_DEV"
+
+      docker compose -f docker-compose.dev.yml up -d --remove-orphans
+      EOF
   needs:
     - build
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
+
+
 
 # --------- DEPLOY PROD (branche main, déclenchement manuel) ---------
 deploy_prod:
@@ -101,30 +108,37 @@ deploy_prod:
     - echo "$SSH_PRIVATE_KEY_PROD" > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
     - export REPO_SSH_URL="git@gitlab.com:$CI_PROJECT_PATH.git"
-    - ssh -o StrictHostKeyChecking=no "$SSH_USER_PROD@$SSH_HOST_PROD" "
-        set -e
-        if [ ! -d /opt/$PROJECT_NAME ]; then
-          mkdir -p /opt/$PROJECT_NAME
-          cd /opt/$PROJECT_NAME
-          git clone '$REPO_SSH_URL' .
-        else
-          cd /opt/$PROJECT_NAME
-          git fetch origin
-          git checkout main
-          git reset --hard origin/main
-        fi
-        docker login -u '$CI_REGISTRY_USER' -p '$CI_REGISTRY_PASSWORD' $CI_REGISTRY
-        export IMAGE_TAG='$IMAGE_TAG' \
-               POSTGRES_PASSWORD='$POSTGRES_PASSWORD_PROD' \
-               DJANGO_SECRET_KEY='$DJANGO_SECRET_KEY_PROD' \
-               DJANGO_ALLOWED_HOSTS='$DJANGO_ALLOWED_HOSTS_PROD'
-        docker compose -f docker-compose.prod.yml up -d --remove-orphans
-      "
+    - |
+      ssh -o StrictHostKeyChecking=no "$SSH_USER_PROD@$SSH_HOST_PROD" << EOF
+      set -e
+
+      if [ ! -d /opt/$PROJECT_NAME ]; then
+        mkdir -p /opt/$PROJECT_NAME
+        cd /opt/$PROJECT_NAME
+        git clone "$REPO_SSH_URL" .
+      else
+        cd /opt/$PROJECT_NAME
+        git fetch origin
+        git checkout main
+        git reset --hard origin/main
+      fi
+
+      docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+
+      export IMAGE_TAG="$IMAGE_TAG" \
+             POSTGRES_PASSWORD="$POSTGRES_PASSWORD_PROD" \
+             DJANGO_SECRET_KEY="$DJANGO_SECRET_KEY_PROD" \
+             DJANGO_ALLOWED_HOSTS="$DJANGO_ALLOWED_HOSTS_PROD"
+
+      docker compose -f docker-compose.prod.yml up -d --remove-orphans
+      EOF
   needs:
     - build
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
+
+
 
 
 # stages:
