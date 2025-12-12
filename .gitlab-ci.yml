@@ -86,7 +86,7 @@ deploy_dev:
   needs:
     - build
   rules:
-    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "dev"
 
 # --------- DEPLOY PROD (branche main, déclenchement manuel) ---------
 deploy_prod:
