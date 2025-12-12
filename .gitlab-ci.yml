@@ -24,6 +24,8 @@ test:
     POSTGRES_HOST: db
     DJANGO_SETTINGS_MODULE: ecommerce.settings.dev
   script:
+    - export DB_PORT=5432
+    - unset POSTGRES_PORT PGPORT
     - pip install -r backend/requirements/dev.txt
     - cd backend
     - python manage.py migrate
