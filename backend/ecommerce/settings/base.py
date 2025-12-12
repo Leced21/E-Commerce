@@ -91,7 +91,7 @@ if POSTGRES_HOST:
         "default": {
             "ENGINE": "django.db.backends.postgresql",
             "HOST": POSTGRES_HOST,
-            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "PORT": os.getenv("DB_PORT", "5432"),
             "NAME": os.getenv("POSTGRES_DB", "ecommerce"),
             "USER": os.getenv("POSTGRES_USER", "ecommerce"),
             "PASSWORD": os.getenv("POSTGRES_PASSWORD", "ecommerce"),
