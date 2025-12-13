@@ -2,31 +2,27 @@ stages:
   - test
   - build
   - deploy_dev
-  - deploy_prod
 
 variables:
   PROJECT_NAME: "ecommerce"
   IMAGE_TAG: "$CI_REGISTRY_IMAGE:latest"
 
-# Login au registry Docker de GitLab pour les jobs qui en ont besoin
-
-# --------- TESTS ---------
 test:
   stage: test
   image: python:3.12-slim
   services:
-    - name: postgres:16
-      alias: db
+  - name: postgres:16
+    alias: db
   variables:
     POSTGRES_DB: ecommerce
     POSTGRES_USER: ecommerce
     POSTGRES_PASSWORD: ecommerce
     POSTGRES_HOST: db
-    DJANGO_SETTINGS_MODULE: ecommerce.settings.dev
+    DJANGO_SETTINGS_MODULE: ecommerce.settings
   script:
     - export DB_PORT=5432
     - unset POSTGRES_PORT PGPORT
-    - pip install -r backend/requirements/dev.txt
+    - pip install -r backend/requirements.txt
     - cd backend
     - python manage.py migrate
     - pytest || if [ $? -eq 5 ]; then echo "Aucun test trouvé, on continue."; else exit 1; fi
@@ -35,7 +31,6 @@ test:
   rules:
     - if: $CI_COMMIT_BRANCH
 
-# --------- BUILD IMAGE ---------
 build:
   stage: build
   image: docker:27.3
@@ -51,33 +46,15 @@ build:
   rules:
     - if: $CI_COMMIT_BRANCH
 
-# --------- DEPLOY DEV (sur ton PC, via runner local) ---------
 deploy_dev:
   stage: deploy_dev
   tags:
     - local-runner
   script:
-    - echo "Déploiement DEV sur la machine locale"
-    - docker login -u $env:CI_REGISTRY_USER -p $env:CI_REGISTRY_PASSWORD $env:CI_REGISTRY
-    - docker pull $env:IMAGE_TAG
-    - docker compose -f docker-compose.dev.yml up -d --remove-orphans
-  needs:
-    - build
+    - docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
+    - docker compose pull
+    - docker compose up -d
+    - docker compose exec -T web python manage.py migrate --noinput
   rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-
-# --------- DEPLOY PROD (sur ton PC, via runner local) ---------
-deploy_prod:
-  stage: deploy_prod
-  tags:
-    - local-runner
-  script:
-    - echo "Déploiement PROD sur la machine locale"
-    - docker login -u $env:CI_REGISTRY_USER -p $env:CI_REGISTRY_PASSWORD $env:CI_REGISTRY
-    - docker pull $env:IMAGE_TAG
-    - docker compose -f docker-compose.prod.yml up -d --remove-orphans
-  needs:
-    - build
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+  when: on_success

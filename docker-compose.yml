@@ -1,0 +1,24 @@
+services:
+  web:
+    container_name: django-dev
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+
+    # Si tu as déjà un .env, on le garde
+    env_file:
+      - .env
+
+    environment:
+      # Pour le développement
+      - DEBUG=1
+      - ALLOWED_HOSTS=*
+
+    volumes:
+      - ./backend:/app
+
+    ports:
+      - "8000:8000"
+
+    command: >
+      python manage.py runserver 0.0.0.0:8000

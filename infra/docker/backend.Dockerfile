@@ -1,25 +1,22 @@
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements ./requirements
+# On copie uniquement le requirements pour installer les dépendances
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --upgrade pip \
+ && pip install -r requirements.txt
 
-ARG ENVIRONMENT=prod
-RUN pip install --no-cache-dir -r requirements/${ENVIRONMENT}.txt
-
+# On copie le code Django
 COPY backend /app
 
-ENV DJANGO_SETTINGS_MODULE=ecommerce.settings.dev
-
-# CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
-COPY backend /app
-
-CMD ["sh", "-c", "python manage.py migrate && gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000"]
+# Commande de démarrage: migrations + serveur
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
