@@ -2,26 +2,27 @@ stages:
   - test
   - build
   - deploy_dev
+  - deploy_prod
 
 variables:
   PROJECT_NAME: "ecommerce"
-  IMAGE_TAG: "$CI_REGISTRY_IMAGE:latest"
+  IMAGE_LATEST: "$CI_REGISTRY_IMAGE:latest"
+  IMAGE_SHA: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
 
 test:
   stage: test
   image: python:3.12-slim
   services:
-  - name: postgres:16
-    alias: db
+    - name: postgres:16
+      alias: db
   variables:
     POSTGRES_DB: ecommerce
     POSTGRES_USER: ecommerce
     POSTGRES_PASSWORD: ecommerce
     POSTGRES_HOST: db
+    POSTGRES_PORT: "5432"
     DJANGO_SETTINGS_MODULE: ecommerce.settings
   script:
-    - export DB_PORT=5432
-    - unset POSTGRES_PORT PGPORT
     - pip install -r backend/requirements.txt
     - cd backend
     - python manage.py migrate
@@ -39,8 +40,9 @@ build:
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
-    - docker build -f infra/docker/backend.Dockerfile -t "$IMAGE_TAG" --build-arg ENVIRONMENT=prod .
-    - docker push "$IMAGE_TAG"
+    - docker build -f infra/docker/backend.Dockerfile -t "$IMAGE_SHA" -t "$IMAGE_LATEST" --build-arg ENVIRONMENT=prod .
+    - docker push "$IMAGE_SHA"
+    - docker push "$IMAGE_LATEST"
   needs:
     - test
   rules:
@@ -52,9 +54,52 @@ deploy_dev:
     - local-runner
   script:
     - docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
-    - docker compose pull
-    - docker compose up -d
-    - docker compose exec -T web python manage.py migrate --noinput
+    - |
+      @"
+        DJANGO_DEBUG=1
+        DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
+        DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+
+        POSTGRES_DB=ecommerce
+        POSTGRES_USER=ecommerce
+        POSTGRES_PASSWORD=ecommerce
+        POSTGRES_HOST=db
+        POSTGRES_PORT=5432
+
+        IMAGE_TAG=$env:IMAGE_LATEST
+        "@ | Out-File -FilePath .env -Encoding ascii
+    - docker compose --profile dev up -d --pull always
+    - docker compose --profile dev exec -T web python manage.py migrate --noinput
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
+  needs:
+    - build
+  when: on_success
+
+deploy_prod:
+  stage: deploy_prod
+  tags:
+    - local-runner
+  script:
+    - docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
+    - |
+      @"
+        DJANGO_DEBUG=0
+        DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
+        DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+        
+        POSTGRES_DB=ecommerce
+        POSTGRES_USER=ecommerce
+        POSTGRES_PASSWORD=ecommerce
+        POSTGRES_HOST=db
+        POSTGRES_PORT=5432
+        
+        IMAGE_TAG=$env:IMAGE_SHA
+        "@ | Out-File -FilePath .env -Encoding ascii
+    - docker compose --profile prod up -d --pull always
+    - docker compose --profile prod exec -T web_prod python manage.py migrate --noinput
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  needs:
+    - build
   when: on_success

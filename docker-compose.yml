@@ -1,24 +1,42 @@
 services:
-  web:
-    container_name: django-dev
-    build:
-      context: .
-      dockerfile: infra/docker/backend.Dockerfile
-
-    # Si tu as déjà un .env, on le garde
-    env_file:
-      - .env
-
+  db:
+    image: postgres:16
+    profiles: ["dev", "prod"]
     environment:
-      # Pour le développement
-      - DEBUG=1
-      - ALLOWED_HOSTS=*
-
+    POSTGRES_DB: ${POSTGRES_DB}
+    POSTGRES_USER: ${POSTGRES_USER}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./backend:/app
-
+    - postgres_data:/var/lib/postgresql/data
     ports:
-      - "8000:8000"
-
-    command: >
-      python manage.py runserver 0.0.0.0:8000
+    - "5432:5432"
+  web:
+    profiles: ["dev"]
+    build:
+    context: .
+    dockerfile: infra/docker/backend.Dockerfile
+    env_file:
+    - .env
+    environment:
+    POSTGRES_HOST: db
+    volumes:
+    - ./backend:/app
+    ports:
+    - "8000:8000"
+    command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+    - db
+  web_prod:
+    profiles: ["prod"]
+    image: ${IMAGE_TAG}
+    env_file:
+    - .env
+    environment:
+    POSTGRES_HOST: db
+    ports:
+    - "8000:8000"
+    command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000
+    depends_on:
+      - db
+  volumes:
+    postgres_data:
