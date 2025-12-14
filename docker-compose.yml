@@ -31,10 +31,19 @@ services:
       - .env
     environment:
       POSTGRES_HOST: db
-    ports:
-    - "8070:8000"
     command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000
     depends_on:
       - db
+  nginx_prod: # NOUVEAU SERVICE
+    profiles: ["prod"]
+    image: nginx:stable-alpine
+    volumes:
+      # Mappe le fichier de configuration Nginx que nous avons créé
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      # Nginx écoute le port 80 (standard HTTP) et l'expose à l'hôte
+      - "80:80" 
+    depends_on:
+      - web_prod
   volumes:
     postgres_data:
