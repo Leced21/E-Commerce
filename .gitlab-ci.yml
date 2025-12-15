@@ -88,32 +88,48 @@ deploy_prod:
       echo "--- DÉMARRAGE DU DÉPLOIEMENT PROD ---"
       docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
       echo "Login Docker réussi."
-      echo "Creation des certificats auto-signés temporaires..."
+      
+      echo "Creation et test d'écriture du volume certs_data..."
       docker volume create certs_data
+      if ($LASTEXITCODE -ne 0) { echo "Volume certs_data déjà existant ou erreur de création (Code $LASTEXITCODE)." }
+      
+      # 1. TEST D'ÉCRITURE DU VOLUME (Validation de l'accès)
+      docker run --rm -v certs_data:/certs alpine touch /certs/test_write.txt 
+      if ($LASTEXITCODE -ne 0) { throw "ERREUR FATALE: Echec d'écriture dans le volume certs_data. Vérifiez votre runner/Docker." }
+      echo "Test d'écriture du volume réussi."
+
+      # 2. GÉNÉRATION OPENSSL FIABILISÉE (Utilisation de quotes simples pour éviter l'interprétation PowerShell)
+      echo "Lancement de la génération OpenSSL..."
+      docker run --rm -v certs_data:/certs nginx:stable-alpine /bin/sh -c 'openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /certs/privkey.pem -out /certs/fullchain.pem -subj "/CN=localhost"'
+      
+      # 3. VÉRIFICATION DU CONTENU DU VOLUME
+      echo "Vérification du contenu du volume certs_data (ls /certs/):"
+      docker run --rm -v certs_data:/certs alpine ls -l /certs/
       if ($LASTEXITCODE -ne 0) {
-        echo "Volume certs_data déjà existant ou erreur de création (Code $LASTEXITCODE)."
+          throw "ERREUR FATALE: Les certificats n'ont pas été générés ou le 'ls' a échoué. Voir logs ci-dessus."
       }
-      docker run --rm -v certs_data:/certs alpine /bin/sh -c "apk add --no-cache openssl > /dev/null 2>&1 && openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /certs/privkey.pem -out /certs/fullchain.pem -subj \"/CN=localhost\""      
-      docker run --rm -v certs_data:/certs alpine ls /certs/
-      if ($LASTEXITCODE -ne 0) {
-          throw "ERREUR FATALE: Les certificats n'ont pas été générés ou ne sont pas accessibles dans le volume."
-      }
-      # 🛑 NOUVEAU : CORRECTION DES PERMISSIONS
+      
+      # 4. CORRECTION DES PERMISSIONS
       echo "Correction des permissions du volume certs_data..."
       docker run --rm -v certs_data:/certs alpine chmod -R 644 /certs/
-      echo "Certificats générés dans le volume certs_data."
+      
+      echo "Certificats générés et permissions corrigées."
+      
+      # 5. Création du fichier .env
       @"
       DJANGO_DEBUG=0
       DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
-      DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0 # Ajoutez votre domaine ici
       POSTGRES_DB=ecommerce
       POSTGRES_USER=ecommerce
       POSTGRES_PASSWORD=ecommerce
-      POSTGRES_HOST=db_prod
+      POSTGRES_HOST=db_prod # CORRIGÉ
       POSTGRES_PORT=5432
       IMAGE_TAG=$env:IMAGE_SHA
       "@ | Out-File -FilePath .env -Encoding ascii
       echo "Fichier .env créé. Démarrage de docker compose."
+      
+      # 6. Démarrage, Migrations et Collecte Statique
       docker compose --profile prod up -d --pull always
       echo "Docker Compose lancé. Exécution des migrations."
       docker compose --profile prod exec -T web_prod python manage.py migrate --noinput
