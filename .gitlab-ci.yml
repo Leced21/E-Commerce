@@ -84,23 +84,25 @@ deploy_prod:
   tags:
     - local-runner
   script:
-    - docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
     - |
+      echo "--- DÉMARRAGE DU DÉPLOIEMENT PROD ---"
+      docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
       @"
-        DJANGO_DEBUG=0
-        DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
-        DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
-
-        POSTGRES_DB=ecommerce
-        POSTGRES_USER=ecommerce
-        POSTGRES_PASSWORD=ecommerce
-        POSTGRES_HOST=db
-        POSTGRES_PORT=5432
-
-        IMAGE_TAG=$env:IMAGE_SHA
-        "@ | Out-File -FilePath .env -Encoding ascii
-    - docker compose --profile prod up -d --pull always
-    - docker compose --profile prod exec -T web_prod python manage.py migrate --noinput
+      DJANGO_DEBUG=0
+      DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
+      DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      POSTGRES_DB=ecommerce
+      POSTGRES_USER=ecommerce
+      POSTGRES_PASSWORD=ecommerce
+      POSTGRES_HOST=db
+      POSTGRES_PORT=5432
+      IMAGE_TAG=$env:IMAGE_SHA
+      "@ | Out-File -FilePath .env -Encoding ascii
+      echo "Fichier .env créé. Démarrage de docker compose."
+      docker compose --profile prod up -d --pull always
+      echo "Docker Compose lancé. Exécution des migrations."
+      docker compose --profile prod exec -T web_prod python manage.py migrate --noinput
+      echo "--- DÉPLOIEMENT PROD TERMINÉ ---"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   needs:
