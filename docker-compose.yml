@@ -1,13 +1,13 @@
 services:
-  db:
+  db_dev:
     image: postgres:16
-    profiles: ["dev", "prod"]
+    profiles: ["dev"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-    - postgres_data:/var/lib/postgresql/data
+    - postgres_data_dev:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -31,6 +31,20 @@ services:
     depends_on:
       db:
         condition: service_healty
+  db_prod:
+    image: postgres:16
+    profiles: ["prod"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
   web_prod:
     container_name: ecommerce-web-prod
     profiles: ["prod"]
@@ -38,10 +52,12 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_HOST: db
+      POSTGRES_HOST: db_prod
+    volumes:
+      - static_data:/app/staticfiles
     command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000
     depends_on:
-      db:
+      db_prod:
         condition: service_healty
   nginx_prod: # NOUVEAU SERVICE
     container_name: ecommerce-nginx-prod
@@ -50,10 +66,13 @@ services:
     volumes:
       # Mappe le fichier de configuration Nginx que nous avons créé
       - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_data:/static:ro
     ports:
       # Nginx écoute le port 80 (standard HTTP) et l'expose à l'hôte
       - "80:80" 
     depends_on:
       - web_prod
 volumes:
-  postgres_data:
+  postgres_data_dev:
+  postgres_data_prod:
+  static_data:
