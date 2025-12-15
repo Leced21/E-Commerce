@@ -45,5 +45,5 @@ services:
       - "80:80" 
     depends_on:
       - web_prod
-  volumes:
-    postgres_data:
+volumes:
+  postgres_data:
