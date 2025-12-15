@@ -114,6 +114,7 @@ deploy_prod:
       # 4. CORRECTION DES PERMISSIONS
       echo "Correction des permissions du volume certs_data..."
       docker run --rm -v certs_data:/certs alpine chmod -R 644 /certs/
+      docker run --rm -v certs_data:/certs alpine /bin/sh -c 'chmod 755 /certs/ && chmod 644 /certs/* && ls -l /certs/'
       
       echo "Certificats générés et permissions corrigées."
       
