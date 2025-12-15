@@ -98,6 +98,9 @@ deploy_prod:
       if ($LASTEXITCODE -ne 0) {
           throw "ERREUR FATALE: Les certificats n'ont pas été générés ou ne sont pas accessibles dans le volume."
       }
+      # 🛑 NOUVEAU : CORRECTION DES PERMISSIONS
+      echo "Correction des permissions du volume certs_data..."
+      docker run --rm -v certs_data:/certs alpine chmod -R 644 /certs/
       echo "Certificats générés dans le volume certs_data."
       @"
       DJANGO_DEBUG=0
