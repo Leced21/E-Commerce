@@ -8,7 +8,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
     - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
   web:
+    container_name: ecommerce-web-dev
     profiles: ["dev"]
     build:
       context: .
@@ -23,8 +29,10 @@ services:
     - "8000:8000"
     command: python manage.py runserver 0.0.0.0:8000
     depends_on:
-    - db
+      db:
+        condition: service_healty
   web_prod:
+    container_name: ecommerce-web-prod
     profiles: ["prod"]
     image: ${IMAGE_TAG}
     env_file:
@@ -33,8 +41,10 @@ services:
       POSTGRES_HOST: db
     command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000
     depends_on:
-      - db
+      db:
+        condition: service_healty
   nginx_prod: # NOUVEAU SERVICE
+    container_name: ecommerce-nginx-prod
     profiles: ["prod"]
     image: nginx:stable-alpine
     volumes:
