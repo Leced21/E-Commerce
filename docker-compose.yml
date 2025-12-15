@@ -22,15 +22,15 @@ services:
     env_file:
     - .env
     environment:
-      POSTGRES_HOST: db
+      POSTGRES_HOST: db_dev
     volumes:
     - ./backend:/app
     ports:
     - "8000:8000"
     command: python manage.py runserver 0.0.0.0:8000
     depends_on:
-      db:
-        condition: service_healty
+      db_dev:
+        condition: service_healthy
   db_prod:
     image: postgres:16
     profiles: ["prod"]
@@ -58,7 +58,7 @@ services:
     command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000
     depends_on:
       db_prod:
-        condition: service_healty
+        condition: service_healthy
   nginx_prod: # NOUVEAU SERVICE
     container_name: ecommerce-nginx-prod
     profiles: ["prod"]
