@@ -64,7 +64,7 @@ deploy_dev:
       POSTGRES_DB=ecommerce
       POSTGRES_USER=ecommerce
       POSTGRES_PASSWORD=ecommerce
-      POSTGRES_HOST=db
+      POSTGRES_HOST=db_dev
       POSTGRES_PORT=5432
       IMAGE_TAG=$env:IMAGE_LATEST
       "@ | Out-File -FilePath .env -Encoding ascii
@@ -93,7 +93,7 @@ deploy_prod:
       if ($LASTEXITCODE -ne 0) {
         echo "Volume certs_data déjà existant ou erreur de création (Code $LASTEXITCODE)."
       }
-      docker run --rm -v certs_data:/certs nginx:stable-alpine /bin/sh -c " apk add --no-cache openssl && openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /certs/privkey.pem -out /certs/fullchain.pem -subj \"/CN=localhost\""
+      docker run --rm -v certs_data:/certs alpine /bin/sh -c "apk add --no-cache openssl > /dev/null 2>&1 && openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /certs/privkey.pem -out /certs/fullchain.pem -subj \"/CN=localhost\""      
       docker run --rm -v certs_data:/certs alpine ls /certs/
       if ($LASTEXITCODE -ne 0) {
           throw "ERREUR FATALE: Les certificats n'ont pas été générés ou ne sont pas accessibles dans le volume."
@@ -106,7 +106,7 @@ deploy_prod:
       POSTGRES_DB=ecommerce
       POSTGRES_USER=ecommerce
       POSTGRES_PASSWORD=ecommerce
-      POSTGRES_HOST=db
+      POSTGRES_HOST=db_prod
       POSTGRES_PORT=5432
       IMAGE_TAG=$env:IMAGE_SHA
       "@ | Out-File -FilePath .env -Encoding ascii
