@@ -98,7 +98,7 @@ deploy_prod:
       if ($LASTEXITCODE -ne 0) { throw "ERREUR FATALE: Echec d'écriture dans le volume certs_data. Vérifiez votre runner/Docker." }
       echo "Test d'écriture du volume réussi."
 
-      # 2. GÉNÉRATION OPENSSL FIABILISÉE (Utilisation d'Alpine et installation d'OpenSSL, avec guillemets simples)
+      # 2. GÉNÉRATION OPENSSL FIABILISÉE
       echo "Lancement de la génération OpenSSL (avec installation préalable)..."
       docker run --rm -v certs_data:/certs alpine /bin/sh -c 'apk add --no-cache openssl > /dev/null 2>&1 && openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /certs/privkey.pem -out /certs/fullchain.pem -subj "/CN=localhost"'
       
@@ -131,10 +131,13 @@ deploy_prod:
       "@ | Out-File -FilePath .env -Encoding ascii
       echo "Fichier .env créé. Démarrage de docker compose."
       
-      # 6. Démarrage, Migrations et Collecte Statique
+      # 6. Démarrage Initial
       docker compose --profile prod up -d --pull always
-      echo "Redémarrage du conteneur Nginx pour assurer la lecture des certificats..."
-      docker compose --profile prod restart nginx_prod
+      
+      # 🛑 CORRECTION CRITIQUE : Recréation forcée de Nginx pour charger le volume certs_data
+      echo "Recréation forcée du conteneur Nginx pour garantir la lecture des certificats..."
+      docker compose --profile prod up -d --no-deps --force-recreate nginx_prod
+
       echo "Docker Compose lancé. Exécution des migrations."
       docker compose --profile prod exec -T web_prod python manage.py migrate --noinput
       echo "Collecte des fichiers statiques dans le volume partagé"
