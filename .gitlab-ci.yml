@@ -102,6 +102,8 @@ deploy_prod:
       docker compose --profile prod up -d --pull always
       echo "Docker Compose lancé. Exécution des migrations."
       docker compose --profile prod exec -T web_prod python manage.py migrate --noinput
+      echo "Collecte des fichiers statiques dans le volume partagé"
+      docker compose --profile prod exec -T web_prod python manage.py collectstatic --noinput
       echo "--- DÉPLOIEMENT PROD TERMINÉ ---"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
