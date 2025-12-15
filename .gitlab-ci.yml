@@ -87,6 +87,19 @@ deploy_prod:
     - |
       echo "--- DÉMARRAGE DU DÉPLOIEMENT PROD ---"
       docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
+      echo "Creation des certificats auto-signés temporaires..."
+      docker volume create certs_data || echo "volume certs_data déjà existant."
+      docker run --rm \
+      -v certs_data:/certs \
+      nginx:stable-alpine \
+      /bin/sh -c " \
+      apk add --no-cache openssl && \
+      openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+      -keyout /certs/privkey.pem \
+      -out /certs/fullchain.pem \
+      -subj \"/CN=localhost\" \
+      "
+      echo "Certificats générés dans le volume certs_data."
       @"
       DJANGO_DEBUG=0
       DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
