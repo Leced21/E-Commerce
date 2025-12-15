@@ -53,24 +53,26 @@ deploy_dev:
   tags:
     - local-runner
   script:
-    - echo "--- DÉMARRAGE DU DÉPLOIEMENT DEV ---"
-    - docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
     - |
+      echo "--- DÉMARRAGE DU DÉPLOIEMENT DEV ---"
+      docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
+      echo "Login Docker réussi."
       @"
-        DJANGO_DEBUG=1
-        DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
-        DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
-        POSTGRES_DB=ecommerce
-        POSTGRES_USER=ecommerce
-        POSTGRES_PASSWORD=ecommerce
-        POSTGRES_HOST=db
-        POSTGRES_PORT=5432
-        IMAGE_TAG=$env:IMAGE_LATEST
-        "@ | Out-File -FilePath .env -Encoding ascii
-    - echo "Fichier .env créé. Démarrage de docker compose."
-    - docker compose --profile dev up -d --pull always
-    - echo "Docker Compose lancé. Exécution des migrations."
-    - docker compose --profile dev exec -T web python manage.py migrate --noinput
+      DJANGO_DEBUG=1
+      DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
+      DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      POSTGRES_DB=ecommerce
+      POSTGRES_USER=ecommerce
+      POSTGRES_PASSWORD=ecommerce
+      POSTGRES_HOST=db
+      POSTGRES_PORT=5432
+      IMAGE_TAG=$env:IMAGE_LATEST
+      "@ | Out-File -FilePath .env -Encoding ascii
+      echo "Fichier .env créé. Démarrage de docker compose."
+      docker compose --profile dev up -d --pull always
+      echo "Docker Compose lancé. Exécution des migrations."
+      docker compose --profile dev exec -T web python manage.py migrate --noinput
+      echo "--- DÉPLOIEMENT DEV TERMINÉ ---"
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
   needs:
