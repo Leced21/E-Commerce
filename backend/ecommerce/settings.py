@@ -83,7 +83,6 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-    
 # =========================================================
 # ☁️ Configuration des Fichiers Médias (Google Cloud Storage)
 # =========================================================
