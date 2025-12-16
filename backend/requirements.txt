@@ -8,3 +8,5 @@ python-dotenv
 pytest-django
 coverage
 ruff
+django-storages
+google-cloud-storage

@@ -85,7 +85,7 @@ deploy_prod:
     - local-runner
   script:
     - |
-      echo "--- DÉMARRAGE DU DÉPLOIEMENT PROD (HTTP UNIQUEMENT) ---"
+      echo "--- DÉMARRAGE DU DÉPLOIEMENT PROD (OPTIMISÉ) ---"
       docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
       echo "Login Docker réussi."
       
@@ -103,22 +103,28 @@ deploy_prod:
       POSTGRES_HOST=db_prod
       POSTGRES_PORT=5432
       IMAGE_TAG=$env:IMAGE_SHA
-      GUNICORN_WORKERS=25
+      GUNICORN_WORKERS=25 # Optimisation pour 12 cœurs CPU
+      
+      # VARIABLES GOOGLE CLOUD STORAGE pour les Médias Utilisateur
+      GCS_BUCKET=$env:GCS_BUCKET
+      # Si nécessaire, ajoutez d'autres variables GCS ici (GS_CREDENTIALS, etc.)
       "@ | Out-File -FilePath .env -Encoding ascii
       echo "Fichier .env créé. Démarrage de docker compose."
       
-      # Démarrage, Migrations et Collecte Statique (Nginx ne lira que le HTTP)
+      # Démarrage des services
       docker compose --profile prod up -d --pull always
       
       echo "Docker Compose lancé. Exécution des migrations."
       docker compose --profile prod exec -T web_prod python manage.py migrate --noinput
       echo "Collecte des fichiers statiques dans le volume partagé"
       docker compose --profile prod exec -T web_prod python manage.py collectstatic --noinput
+      
       echo "--- SAUVEGARDE DE LA BASE DE DONNÉES PostgreSQL ---"
       
       $BACKUP_FILE = "latest_prod_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').sql"
-      $DB_CONTAINER = "e-commerce-db_prod-1" # Assurez-vous que ce nom correspond au nom réel du conteneur DB
-
+      # Nom du conteneur par défaut : <nom_du_projet>-<nom_du_service>-1
+      $DB_CONTAINER = "ecommerce-db_prod-1" 
+      
       # 1. Exécuter le dump DANS le conteneur, en écrivant le fichier dans le volume /backups
       docker compose --profile prod exec -T db_prod sh -c "pg_dump -U ${POSTGRES_USER} -d ${POSTGRES_DB} > /backups/$BACKUP_FILE"
       

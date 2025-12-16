@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Tes apps
     "core",
+    "storages",
 ]
 
 MIDDLEWARE = [
@@ -54,12 +55,45 @@ TEMPLATES = [
 WSGI_APPLICATION = "ecommerce.wsgi.application"
 
 # Pour l’instant, DB simple en SQLite pour dev
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
+
+# Configuration de la base de données (PostgreSQL ou SQLite)
+# Si POSTGRES_HOST est défini (dans l'environnement Docker Prod), on utilise PostgreSQL
+if os.getenv("POSTGRES_HOST"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB"),
+            "USER": os.getenv("POSTGRES_USER"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+            "HOST": os.getenv("POSTGRES_HOST"),
+            "PORT": os.getenv("POSTGRES_PORT"),
+        }
     }
-}
+else:
+    # Pour l’instant, DB simple en SQLite pour dev (si non défini)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
+    
+# =========================================================
+# ☁️ Configuration des Fichiers Médias (Google Cloud Storage)
+# =========================================================
+
+GCS_BUCKET = os.getenv("GCS_BUCKET")
+DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+
+# Configuration supplémentaire (Utiliser les IDs et régions réels)
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "VOTRE_PROJET_ID")
+GCP_LOCATION = os.getenv("GCP_LOCATION", "VOTRE_REGION")
 
 AUTH_PASSWORD_VALIDATORS = []
 
