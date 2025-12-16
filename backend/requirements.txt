@@ -14,3 +14,5 @@ google-cloud-secret-manager
 Pillow
 stripe
 djangorestframework
+redis
+django-redis

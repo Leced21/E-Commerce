@@ -6,9 +6,11 @@ from django.http import HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Cart, Order, OrderItem
+from .models import Cart, Order, OrderItem, Category
 from .stripe_service import create_payment_intent
 import logging
+from django.core.cache import cache
+
 
 
 # Initialisez Stripe pour les Webhooks
@@ -145,6 +147,24 @@ def stripe_webhook(request):
 
     return HttpResponse(status=200)  # Stripe attend toujours un code 200
 
+class CategoryListView(APIView):
+    def get(self, request, *args, **kwargs):
+        CACHE_KEY = 'all_categories'
+        data = cache.get(CACHE_KEY) # Essaie de lire les données du cache
 
+        if data is None:
+            # Si le cache est vide, interroge la base de données (lourd)
+            categories = Category.objects.all().values('id', 'name', 'slug') 
+            data = list(categories) # Conversion en liste pour le cache
+            
+            # Stocke les données dans le cache pour 3600 secondes (1 heure)
+            cache.set(CACHE_KEY, data, 3600) 
+            
+            print("CACHE MISS: Données lues depuis la base de données.")
+        else:
+            print("CACHE HIT: Données lues depuis Redis.")
+            
+        return Response(data)
+    
 def home(request):
     return render(request, "core/home.html")

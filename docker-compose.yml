@@ -1,4 +1,9 @@
 services:
+  redis:
+    image: redis:7-alpine # Image Redis légère
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
   db_dev:
     image: postgres:16
     profiles: ["dev"]
@@ -56,14 +61,18 @@ services:
       DJANGO_DEBUG: 0
       GCP_PROJECT_ID: ${GCP_PROJECT_ID}
       POSTGRES_HOST: db_prod
+      REDIS_URL: redis://redis:6379/1
       GOOGLE_APPLICATION_CREDENTIALS: /etc/secrets/gcp_sa_key.json
-    # command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000
+      command: /app/scripts/start.sh
     # command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000 -w ${GUNICORN_WORKERS}
     volumes:
       - ./gcp_service_account.json:/etc/secrets/gcp_sa_key.json:ro
+      - ./backend:/app
     depends_on:
       db_prod:
         condition: service_healthy
+      redis:
+        condition: service_started
   nginx_prod: # NOUVEAU SERVICE
     container_name: ecommerce-nginx-prod
     profiles: ["prod"]
