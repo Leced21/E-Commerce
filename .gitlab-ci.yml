@@ -131,7 +131,7 @@ deploy_prod:
       
       # 2. Copier le fichier de sauvegarde DU conteneur VERS le runner
       mkdir -Force -Path "prod_backups" | Out-Null # Crée le répertoire s'il n'existe pas
-      docker cp $DB_CONTAINER:/backups/$BACKUP_FILE prod_backups/
+      docker cp ${DB_CONTAINER}:/backups/${BACKUP_FILE} prod_backups/
       
       # 3. Supprimer le fichier du volume pour ne pas encombrer
       docker compose --profile prod exec -T db_prod rm /backups/$BACKUP_FILE
