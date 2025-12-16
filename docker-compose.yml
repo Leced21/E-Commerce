@@ -56,8 +56,6 @@ services:
       DJANGO_DEBUG: 0
       GCP_PROJECT_ID: ${GCP_PROJECT_ID}
       POSTGRES_HOST: db_prod
-    volumes:
-      # - static_data:/app/staticfiles
     # command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000
     command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000 -w ${GUNICORN_WORKERS}
     depends_on:
