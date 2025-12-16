@@ -1,5 +1,4 @@
 import stripe
-import os
 from django.conf import settings
 
 # Initialise le client Stripe avec la clé secrète

@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.conf import settings
 
 # backend/core/views.py (exemple simplifié)
 from rest_framework.views import APIView
