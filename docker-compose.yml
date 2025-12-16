@@ -64,8 +64,6 @@ services:
     profiles: ["prod"]
     image: nginx:stable-alpine
     volumes:
-      # NOUVEAU : Volume pour les certificats SSL
-      - certs_data:/certs:ro
       # Mappe le fichier de configuration Nginx que nous avons créé
       - ./infra/nginx/nginx_http.conf:/etc/nginx/conf.d/default.conf:ro
       - static_data:/static:ro
