@@ -99,7 +99,7 @@ if IS_PRODUCTION and GCS_BUCKET_NAME:
     
     # 2. Emplacement des Médias dans le bucket GCS
     GS_MEDIA_LOCATION = "media"
-    MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/{GS_MEDIA_LOCATION}/"
+    MEDIA_URL = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{GS_MEDIA_LOCATION}/"
     MEDIA_ROOT = 'media/' # Valeur symbolique pour django-storages
 
     # 3. Stockage des Fichiers Statiques (CSS, JS, images du thème)
@@ -107,7 +107,7 @@ if IS_PRODUCTION and GCS_BUCKET_NAME:
     
     # 4. Emplacement des Statiques dans le bucket GCS
     GS_STATIC_LOCATION = "static"
-    STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/{GS_STATIC_LOCATION}/"
+    STATIC_URL = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{GS_STATIC_LOCATION}/"
     STATIC_ROOT = 'static/' # Valeur symbolique pour django-storages
 
     # Optionnel: Ajout de la création automatique de sous-dossiers
