@@ -123,7 +123,7 @@ deploy_prod:
       
       $BACKUP_FILE = "latest_prod_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').sql"
       # Nom du conteneur par défaut : <nom_du_projet>-<nom_du_service>-1
-      $DB_CONTAINER = "ecommerce-db_prod-1" 
+      $DB_CONTAINER = "e-commerce-db_prod-1" 
       
       # 1. Exécuter le dump DANS le conteneur, en écrivant le fichier dans le volume /backups
       docker compose --profile prod exec -T db_prod sh -c "pg_dump -U ${POSTGRES_USER} -d ${POSTGRES_DB} > /backups/$BACKUP_FILE"
