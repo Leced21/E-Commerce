@@ -8,6 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 IS_PRODUCTION = os.getenv("POSTGRES_HOST") is not None
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 # Sécurité: pour le dev on met une valeur par défaut. DOIT être changée en Prod.
 # En Prod, cette clé sera lue par votre script load_secrets.py (via Secret Manager)

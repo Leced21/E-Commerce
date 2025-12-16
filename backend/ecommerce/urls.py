@@ -18,7 +18,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
-from core.views import CreatePaymentIntentView
+from core.views import CreatePaymentIntentView, stripe_webhook
 
 from core import views as core_views
 
@@ -30,6 +30,7 @@ urlpatterns = [
         CreatePaymentIntentView.as_view(),
         name="create-payment-intent",
     ),
+    path("webhook/stripe/", stripe_webhook, name="stripe-webhook"),
 ]
 
 # Debug toolbar uniquement si:

@@ -1,12 +1,18 @@
 from django.shortcuts import render
 from django.conf import settings
-
-# backend/core/views.py (exemple simplifié)
+import stripe
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Cart, Order, OrderItem
 from .stripe_service import create_payment_intent
+
+
+# Initialisez Stripe pour les Webhooks
+stripe.api_key = settings.STRIPE_SECRET_KEY
+WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
 
 
 class CreatePaymentIntentView(APIView):
@@ -81,6 +87,59 @@ class CreatePaymentIntentView(APIView):
             {"error": "Erreur lors de la création du Payment Intent."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@csrf_exempt
+def stripe_webhook(request):
+    """
+    Gère les notifications d'événements (webhooks) envoyées par Stripe.
+    """
+    payload = request.body
+    sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
+    event = None
+
+    try:
+        # 1. Vérifie la signature pour s'assurer que l'appel vient bien de Stripe
+        event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
+    except ValueError as e:
+        # Charge utile invalide
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError as e:
+        # Signature invalide
+        return HttpResponse(status=400)
+
+    # 2. Gère l'événement
+    if event["type"] == "payment_intent.succeeded":
+        intent = event["data"]["object"]
+
+        # Récupère l'ID de la commande que nous avons stocké dans les metadata
+        order_id = intent["metadata"].get("order_id")
+
+        if order_id:
+            try:
+                order = Order.objects.get(id=order_id)
+
+                if order.status == "pending":
+                    # 3. Met à jour le statut de la commande
+                    order.status = "processing"
+                    order.save()
+
+                    # 4. Vide le panier de l'utilisateur (logique à implémenter)
+                    # if order.user:
+                    #     Cart.objects.filter(user=order.user).delete()
+
+                    print(
+                        f"Paiement réussi pour la commande {order_id}. Statut mis à jour."
+                    )
+
+            except Order.DoesNotExist:
+                print(f"ERREUR: Commande {order_id} non trouvée.")
+
+    elif event["type"] == "payment_intent.payment_failed":
+        # Gérer l'échec de paiement (ex: envoyer une alerte, mettre le statut à 'failed')
+        pass
+
+    return HttpResponse(status=200)  # Stripe attend toujours un code 200
 
 
 def home(request):
