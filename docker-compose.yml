@@ -53,6 +53,8 @@ services:
     env_file:
       - .env
     environment:
+      DJANGO_DEBUG: 0
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
       POSTGRES_HOST: db_prod
     volumes:
       # - static_data:/app/staticfiles

@@ -10,3 +10,4 @@ coverage
 ruff
 django-storages
 google-cloud-storage
+google-cloud-secret-manager
