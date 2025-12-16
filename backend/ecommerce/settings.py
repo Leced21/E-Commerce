@@ -109,13 +109,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Configuration pour les Fichiers Statiques
 if os.getenv("GCS_BUCKET") and not DEBUG:
     # 1. Utiliser GCS pour les statiques en Production
-    STATICFILES_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
-    
+    STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
+
     # 2. Définir le chemin de base des statiques sur le CDN GCS
     STATIC_URL = f"https://storage.googleapis.com/{os.getenv('GCS_BUCKET')}/static/"
-    
+
     # Optional: Ajouter des paramètres spécifiques si nécessaire (ex: cache)
-    GS_STATIC_LOCATION = 'static' # Les fichiers statiques seront stockés sous ce chemin
+    GS_STATIC_LOCATION = (
+        "static"  # Les fichiers statiques seront stockés sous ce chemin
+    )
 else:
     # 3. Maintenir le comportement local en Dev (ou si les variables GCS sont absentes)
     STATIC_URL = "static/"
