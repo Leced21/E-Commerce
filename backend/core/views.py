@@ -12,7 +12,6 @@ import logging
 from django.core.cache import cache
 
 
-
 # Initialisez Stripe pour les Webhooks
 stripe.api_key = settings.STRIPE_SECRET_KEY
 WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
@@ -147,24 +146,26 @@ def stripe_webhook(request):
 
     return HttpResponse(status=200)  # Stripe attend toujours un code 200
 
+
 class CategoryListView(APIView):
     def get(self, request, *args, **kwargs):
-        CACHE_KEY = 'all_categories'
-        data = cache.get(CACHE_KEY) # Essaie de lire les données du cache
+        CACHE_KEY = "all_categories"
+        data = cache.get(CACHE_KEY)  # Essaie de lire les données du cache
 
         if data is None:
             # Si le cache est vide, interroge la base de données (lourd)
-            categories = Category.objects.all().values('id', 'name', 'slug') 
-            data = list(categories) # Conversion en liste pour le cache
-            
+            categories = Category.objects.all().values("id", "name", "slug")
+            data = list(categories)  # Conversion en liste pour le cache
+
             # Stocke les données dans le cache pour 3600 secondes (1 heure)
-            cache.set(CACHE_KEY, data, 3600) 
-            
+            cache.set(CACHE_KEY, data, 3600)
+
             print("CACHE MISS: Données lues depuis la base de données.")
         else:
             print("CACHE HIT: Données lues depuis Redis.")
-            
+
         return Response(data)
-    
+
+
 def home(request):
     return render(request, "core/home.html")

@@ -92,8 +92,8 @@ else:
 
 if IS_PRODUCTION:
     # URL de connexion au service Redis (typique dans un environnement Docker/K8s)
-    REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1") 
-    
+    REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
+
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -101,7 +101,7 @@ if IS_PRODUCTION:
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
                 # 60 secondes (max_entries par défaut)
-                "MAX_ENTRIES": 1000, 
+                "MAX_ENTRIES": 1000,
             },
         }
     }
@@ -110,7 +110,7 @@ else:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-in-dev", # Clé unique pour le cache local
+            "LOCATION": "unique-in-dev",  # Clé unique pour le cache local
         }
     }
 # =========================================================
