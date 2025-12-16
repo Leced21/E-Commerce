@@ -17,12 +17,12 @@ RUN pip install --upgrade pip \
 
 # On copie le code Django
 COPY backend /app
-COPY infra/docker/entrypoint.sh /app/entrypoint.sh
-COPY backend/scripts/load_secrets.py /app/scripts/load_secrets.py
+COPY infra/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY backend/scripts/load_secrets.py /usr/local/bin/load_secrets.py
 
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/usr/local/bin/entrypoint.sh"]
 
 # Commande de démarrage: migrations + serveur
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+# CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
