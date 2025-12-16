@@ -111,3 +111,39 @@ class CartItem(models.Model):
     # def sub_total(self):
     #     # Doit retourner le prix de la variante * la quantité
     #     return self.quantity * self.variant.price_default # Correction: utiliser le prix effectif de la variante
+
+
+# Modèle pour la Commande (l'en-tête de la transaction)
+class Order(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    shipping_address = models.TextField()
+    billing_address = models.TextField()
+    total_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    # Champ crucial : identifiant Stripe pour les références
+    stripe_payment_intent_id = models.CharField(
+        max_length=255, unique=True, null=True, blank=True
+    )
+
+    # États courants : 'pending', 'processing', 'shipped', 'delivered', 'cancelled'
+    status = models.CharField(max_length=50, default="pending")
+
+    def __str__(self):
+        return f"Commande #{self.id} - {self.status}"
+
+
+# Modèle pour les Articles de la Commande (un enregistrement de ce qui a été acheté)
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
+    product_variant = models.ForeignKey(
+        "ProductVariant", on_delete=models.SET_NULL, null=True
+    )
+    quantity = models.PositiveIntegerField()
+    # On enregistre le prix de l'article au moment de l'achat
+    price_at_time_of_purchase = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return (
+            f"{self.quantity} x {self.product_variant.product.name} ({self.order.id})"
+        )
