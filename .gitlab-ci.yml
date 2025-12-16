@@ -67,6 +67,7 @@ deploy_dev:
       POSTGRES_HOST=db_dev
       POSTGRES_PORT=5432
       IMAGE_TAG=$env:IMAGE_LATEST
+      GUNICORN_WORKERS=1
       "@ | Out-File -FilePath .env -Encoding ascii
       echo "Fichier .env créé. Démarrage de docker compose."
       docker compose --profile dev up -d --pull always
