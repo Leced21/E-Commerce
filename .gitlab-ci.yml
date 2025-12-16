@@ -70,7 +70,7 @@ deploy_dev:
       GUNICORN_WORKERS=1
       "@ | Out-File -FilePath .env -Encoding ascii
       echo "Fichier .env créé. Démarrage de docker compose."
-      docker compose --profile dev up -d --pull always
+      docker compose --profile dev up -d --build --pull always
       echo "Docker Compose lancé. Exécution des migrations."
       docker compose --profile dev exec -T web python manage.py migrate --noinput
       echo "--- DÉPLOIEMENT DEV TERMINÉ ---"
