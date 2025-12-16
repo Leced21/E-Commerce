@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     # Tes apps
     "core",
     "storages",  # Nécessaire pour Google Cloud Storage
+    "rest_framework",
 ]
 
 # ... MIDDLEWARE, ROOT_URLCONF, TEMPLATES, WSGI_APPLICATION, AUTH_PASSWORD_VALIDATORS ...
