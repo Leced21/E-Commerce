@@ -8,11 +8,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Cart, Order, OrderItem
 from .stripe_service import create_payment_intent
+import logging
 
 
 # Initialisez Stripe pour les Webhooks
 stripe.api_key = settings.STRIPE_SECRET_KEY
 WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
+logger = logging.getLogger(__name__)
 
 
 class CreatePaymentIntentView(APIView):
@@ -105,8 +107,9 @@ def stripe_webhook(request):
         # Charge utile invalide
         print(f"Erreur de payload Stripe : {e}")
         return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError as _:
+    except stripe.error.SignatureVerificationError as e:
         # Signature invalide
+        logger.error(f"Erreur de vérification de signature Stripe : {e}")
         return HttpResponse(status=400)
 
     # 2. Gère l'événement
