@@ -114,6 +114,22 @@ deploy_prod:
       docker compose --profile prod exec -T web_prod python manage.py migrate --noinput
       echo "Collecte des fichiers statiques dans le volume partagé"
       docker compose --profile prod exec -T web_prod python manage.py collectstatic --noinput
+      echo "--- SAUVEGARDE DE LA BASE DE DONNÉES PostgreSQL ---"
+      
+      $BACKUP_FILE = "latest_prod_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').sql"
+      $DB_CONTAINER = "e-commerce-db_prod-1" # Assurez-vous que ce nom correspond au nom réel du conteneur DB
+
+      # 1. Exécuter le dump DANS le conteneur, en écrivant le fichier dans le volume /backups
+      docker compose --profile prod exec -T db_prod sh -c "pg_dump -U ${POSTGRES_USER} -d ${POSTGRES_DB} > /backups/$BACKUP_FILE"
+      
+      # 2. Copier le fichier de sauvegarde DU conteneur VERS le runner
+      mkdir -Force -Path "prod_backups" | Out-Null # Crée le répertoire s'il n'existe pas
+      docker cp $DB_CONTAINER:/backups/$BACKUP_FILE prod_backups/
+      
+      # 3. Supprimer le fichier du volume pour ne pas encombrer
+      docker compose --profile prod exec -T db_prod rm /backups/$BACKUP_FILE
+
+      echo "Sauvegarde $BACKUP_FILE créée dans prod_backups/ sur le runner."
       echo "--- DÉPLOIEMENT PROD TERMINÉ ---"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
