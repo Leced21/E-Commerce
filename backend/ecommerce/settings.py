@@ -5,14 +5,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Détection de l'environnement de production
 # Nous utilisons la variable POSTGRES_HOST comme indicateur clé d'un environnement Docker/Prod
-IS_PRODUCTION = os.getenv("POSTGRES_HOST") is not None 
+IS_PRODUCTION = os.getenv("POSTGRES_HOST") is not None
 
 # Sécurité: pour le dev on met une valeur par défaut. DOIT être changée en Prod.
 # En Prod, cette clé sera lue par votre script load_secrets.py (via Secret Manager)
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 
 # Le mode DEBUG est False en Production (sécurité et performance)
-DEBUG = os.getenv("DEBUG", "1") == "1" and not IS_PRODUCTION # Force False si en Prod
+DEBUG = os.getenv("DEBUG", "1") == "1" and not IS_PRODUCTION  # Force False si en Prod
 
 # Pour dev, on autorise tout. En Prod, il faut restreindre au nom de domaine.
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Tes apps
     "core",
-    "storages", # Nécessaire pour Google Cloud Storage
+    "storages",  # Nécessaire pour Google Cloud Storage
 ]
 
 # ... MIDDLEWARE, ROOT_URLCONF, TEMPLATES, WSGI_APPLICATION, AUTH_PASSWORD_VALIDATORS ...
@@ -88,7 +88,7 @@ else:
 # =========================================================
 
 # Variables GCS
-GCS_BUCKET_NAME = os.getenv("GCS_BUCKET") # Utilisé par django-storages
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET")  # Utilisé par django-storages
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
 
 if IS_PRODUCTION and GCS_BUCKET_NAME:
@@ -96,24 +96,26 @@ if IS_PRODUCTION and GCS_BUCKET_NAME:
 
     # 1. Stockage par défaut pour les Médias (Images de produits, uploads)
     DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
-    
+
     # 2. Emplacement des Médias dans le bucket GCS
     GS_MEDIA_LOCATION = "media"
     MEDIA_URL = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{GS_MEDIA_LOCATION}/"
-    MEDIA_ROOT = 'media/' # Valeur symbolique pour django-storages
+    MEDIA_ROOT = "media/"  # Valeur symbolique pour django-storages
 
     # 3. Stockage des Fichiers Statiques (CSS, JS, images du thème)
     STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
-    
+
     # 4. Emplacement des Statiques dans le bucket GCS
     GS_STATIC_LOCATION = "static"
-    STATIC_URL = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{GS_STATIC_LOCATION}/"
-    STATIC_ROOT = 'static/' # Valeur symbolique pour django-storages
+    STATIC_URL = (
+        f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{GS_STATIC_LOCATION}/"
+    )
+    STATIC_ROOT = "static/"  # Valeur symbolique pour django-storages
 
     # Optionnel: Ajout de la création automatique de sous-dossiers
     GS_AUTO_CREATE_MEDIA_SUBFOLDER = True
     GS_AUTO_CREATE_STATIC_SUBFOLDER = True
-    
+
 else:
     # --- 💻 PARAMÈTRES DE DÉVELOPPEMENT LOCAL ---
 
