@@ -108,6 +108,7 @@ deploy_prod:
       
       # VARIABLES GOOGLE CLOUD STORAGE pour les Médias Utilisateur
       GCS_BUCKET=$env:GCS_BUCKET
+      GCP_PROJECT_ID=$env:GCP_PROJECT_ID
       # Si nécessaire, ajoutez d'autres variables GCS ici (GS_CREDENTIALS, etc.)
       "@ | Out-File -FilePath .env -Encoding ascii
       echo "Fichier .env créé. Démarrage de docker compose."
@@ -124,7 +125,7 @@ deploy_prod:
       
       $BACKUP_FILE = "latest_prod_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').sql"
       # Nom du conteneur par défaut : <nom_du_projet>-<nom_du_service>-1
-      $DB_CONTAINER = "e-commerce_db_prod-1" 
+      $DB_CONTAINER = docker compose --profile prod ps -q db_prod 
       
       # 1. Exécuter le dump DANS le conteneur, en écrivant le fichier dans le volume /backups
       docker compose --profile prod exec -T db_prod sh -c "pg_dump -U ${POSTGRES_USER} -d ${POSTGRES_DB} > /backups/$BACKUP_FILE"
