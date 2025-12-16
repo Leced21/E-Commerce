@@ -88,7 +88,7 @@ else:
 # =========================================================
 
 GCS_BUCKET = os.getenv("GCS_BUCKET")
-DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
 
 # Configuration supplémentaire (Utiliser les IDs et régions réels)
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "VOTRE_PROJET_ID")
