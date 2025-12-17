@@ -14,21 +14,27 @@ SECRET_MAPPING = {
 
 
 def load_secrets():
-    """Charge les secrets depuis GCSM dans l'environnement."""
+    print(f"Connexion à Secret Manager pour le projet : {PROJECT_ID}")
     client = secretmanager.SecretManagerServiceClient()
+    secrets_to_write = []
 
     for secret_name, env_var_name in SECRET_MAPPING.items():
-        # Chemin complet vers la dernière version du secret
         secret_path = client.secret_version_path(PROJECT_ID, secret_name, "latest")
         try:
             response = client.access_secret_version(request={"name": secret_path})
             secret_value = response.payload.data.decode("UTF-8")
-            os.environ[env_var_name] = secret_value
-            print(f"Secret {secret_name} chargé dans {env_var_name}")
+            
+            # On prépare la ligne pour le fichier .env
+            secrets_to_write.append(f"export {env_var_name}='{secret_value}'")
+            print(f"Secret {secret_name} récupéré.")
         except Exception as e:
             print(f"Erreur lors du chargement du secret {secret_name}: {e}")
-            # Lève une erreur critique si un secret est manquant
             raise EnvironmentError(f"Secret manquant: {secret_name}") from e
+
+    # On écrit tout dans un fichier que le Shell pourra lire
+    with open("/tmp/.env.secrets", "w") as f:
+        f.write("\n".join(secrets_to_write))
+    print("Fichier de secrets temporaire généré.")
 
 
 if __name__ == "__main__":
