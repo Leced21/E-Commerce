@@ -23,7 +23,7 @@ def load_secrets():
         try:
             response = client.access_secret_version(request={"name": secret_path})
             secret_value = response.payload.data.decode("UTF-8")
-            
+
             # On prépare la ligne pour le fichier .env
             secrets_to_write.append(f"export {env_var_name}='{secret_value}'")
             print(f"Secret {secret_name} récupéré.")
