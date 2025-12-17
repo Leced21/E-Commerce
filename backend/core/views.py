@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Cart, Order, OrderItem, Category
+from .models import Cart, Order, OrderItem, Category, Product
 from .stripe_service import create_payment_intent
 import logging
 from django.core.cache import cache
@@ -169,3 +169,8 @@ class CategoryListView(APIView):
 
 def home(request):
     return render(request, "core/home.html")
+
+def product_list(request):
+    # On récupère les produits actifs et on pré-charge les variantes pour avoir l'image et le prix
+    products = Product.objects.filter(is_active=True).prefetch_related('variants')
+    return render(request, 'pages/index.html', {'products': products})
