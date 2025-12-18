@@ -1,3 +1,1 @@
-from django.contrib import admin
-
-# Register your models here.
+# Admin de l'app core (vide pour le moment).

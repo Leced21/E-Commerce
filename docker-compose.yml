@@ -1,0 +1,96 @@
+services:
+  redis:
+    image: redis:7-alpine # Image Redis légère
+    container_name: redis_cache
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  db_dev:
+    image: postgres:16
+    profiles: ["dev"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+    - postgres_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  web:
+    container_name: ecommerce-web-dev
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    env_file:
+    - .env
+    environment:
+      POSTGRES_HOST: db_dev
+    volumes:
+    - ./backend:/app
+    ports:
+    - "8000:8000"
+    command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+      db_dev:
+        condition: service_healthy
+  db_prod:
+    image: postgres:16
+    profiles: ["prod"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - postgres_backup:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  web_prod:
+    container_name: ecommerce-web-prod
+    profiles: ["prod"]
+    image: ${IMAGE_TAG}
+    env_file:
+      - .env
+    environment:
+      DJANGO_DEBUG: 0
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      POSTGRES_HOST: db_prod
+      REDIS_URL: redis://redis:6379/1
+      GOOGLE_APPLICATION_CREDENTIALS: /etc/secrets/gcp_sa_key.json
+    command: /bin/bash /app/scripts/start.sh
+    # command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000 -w ${GUNICORN_WORKERS}
+    volumes:
+      - ./gcp_service_account.json:/etc/secrets/gcp_sa_key.json:ro
+      - ./backend:/app
+    depends_on:
+      db_prod:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  nginx_prod: # NOUVEAU SERVICE
+    container_name: ecommerce-nginx-prod
+    profiles: ["prod"]
+    image: nginx:stable-alpine
+    volumes:
+      # Mappe le fichier de configuration Nginx que nous avons créé
+      - ./infra/nginx/nginx_http.conf:/etc/nginx/conf.d/default.conf:ro
+      # - static_data:/static:ro
+    ports:
+      # Nginx écoute le port 80 (standard HTTP) et l'expose à l'hôte
+      - "80:80" 
+    depends_on:
+      - web_prod
+volumes:
+  postgres_data_dev:
+  postgres_data_prod:
+  # static_data:
+  postgres_backup:
