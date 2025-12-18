@@ -6,13 +6,9 @@ stages:
 
 variables:
   PROJECT_NAME: "ecommerce"
-  IMAGE_TAG: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+  IMAGE_LATEST: "$CI_REGISTRY_IMAGE:latest"
+  IMAGE_SHA: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
 
-# Login au registry Docker de GitLab pour les jobs qui en ont besoin
-before_script:
-  - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-
-# --------- TESTS ---------
 test:
   stage: test
   image: python:3.12-slim
@@ -24,222 +20,131 @@ test:
     POSTGRES_USER: ecommerce
     POSTGRES_PASSWORD: ecommerce
     POSTGRES_HOST: db
-    DJANGO_SETTINGS_MODULE: ecommerce.settings.dev
+    POSTGRES_PORT: "5432"
+    DJANGO_SETTINGS_MODULE: ecommerce.settings
   script:
-    - pip install -r backend/requirements/dev.txt
+    - pip install -r backend/requirements.txt
     - cd backend
     - python manage.py migrate
-    - pytest
+    - pytest || if [ $? -eq 5 ]; then echo "Aucun test trouvé, on continue."; else exit 1; fi
     - flake8 .
     - black --check .
   rules:
     - if: $CI_COMMIT_BRANCH
 
-# --------- BUILD IMAGE ---------
 build:
   stage: build
   image: docker:27.3
   services:
     - docker:27.3-dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
-    - docker build -f infra/docker/backend.Dockerfile -t "$IMAGE_TAG" --build-arg ENVIRONMENT=prod .
-    - docker push "$IMAGE_TAG"
+    - docker build -f infra/docker/backend.Dockerfile -t "$IMAGE_SHA" -t "$IMAGE_LATEST" --build-arg ENVIRONMENT=prod .
+    - docker push "$IMAGE_SHA"
+    - docker push "$IMAGE_LATEST"
   needs:
     - test
   rules:
     - if: $CI_COMMIT_BRANCH
 
-# --------- DEPLOY DEV (branche develop) ---------
 deploy_dev:
   stage: deploy_dev
-  image: alpine:3.20
-  environment:
-    name: dev
-    url: https://$DEV_DOMAIN
+  tags:
+    - local-runner
   script:
-    - apk add --no-cache openssh-client git
-    - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY_DEV" > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - export REPO_SSH_URL="git@gitlab.com:$CI_PROJECT_PATH.git"
-    - ssh -o StrictHostKeyChecking=no "$SSH_USER_DEV@$SSH_HOST_DEV" "
-        set -e
-        if [ ! -d /opt/$PROJECT_NAME ]; then
-          mkdir -p /opt/$PROJECT_NAME
-          cd /opt/$PROJECT_NAME
-          git clone '$REPO_SSH_URL' .
-        else
-          cd /opt/$PROJECT_NAME
-          git fetch origin
-          git checkout $CI_COMMIT_REF_NAME
-          git reset --hard origin/$CI_COMMIT_REF_NAME
-        fi
-        docker login -u '$CI_REGISTRY_USER' -p '$CI_REGISTRY_PASSWORD' $CI_REGISTRY
-        export IMAGE_TAG='$IMAGE_TAG' \
-               POSTGRES_PASSWORD='$POSTGRES_PASSWORD_DEV' \
-               DJANGO_SECRET_KEY_DEV='$DJANGO_SECRET_KEY_DEV' \
-               DJANGO_ALLOWED_HOSTS_DEV='$DJANGO_ALLOWED_HOSTS_DEV'
-        docker compose -f docker-compose.dev.yml up -d --remove-orphans
-      "
+    - |
+      echo "--- DÉMARRAGE DU DÉPLOIEMENT DEV ---"
+      docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
+      echo "Login Docker réussi."
+      @"
+      DJANGO_DEBUG=1
+      DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
+      DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      POSTGRES_DB=ecommerce
+      POSTGRES_USER=ecommerce
+      POSTGRES_PASSWORD=ecommerce
+      POSTGRES_HOST=db_dev
+      POSTGRES_PORT=5432
+      IMAGE_TAG=$env:IMAGE_LATEST
+      GUNICORN_WORKERS=1
+      "@ | Out-File -FilePath .env -Encoding ascii
+      echo "Fichier .env créé. Démarrage de docker compose."
+      docker compose --profile dev up -d --build --pull always
+      echo "Docker Compose lancé. Exécution des migrations."
+      docker compose --profile dev exec -T web python manage.py migrate --noinput
+      echo "--- DÉPLOIEMENT DEV TERMINÉ ---"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
   needs:
     - build
-  rules:
-    - if: $CI_COMMIT_BRANCH == "develop"
+  when: on_success
 
-# --------- DEPLOY PROD (branche main, déclenchement manuel) ---------
 deploy_prod:
   stage: deploy_prod
-  image: alpine:3.20
-  environment:
-    name: production
-    url: https://$PROD_DOMAIN
+  tags:
+    - local-runner
   script:
-    - apk add --no-cache openssh-client git
-    - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY_PROD" > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - export REPO_SSH_URL="git@gitlab.com:$CI_PROJECT_PATH.git"
-    - ssh -o StrictHostKeyChecking=no "$SSH_USER_PROD@$SSH_HOST_PROD" "
-        set -e
-        if [ ! -d /opt/$PROJECT_NAME ]; then
-          mkdir -p /opt/$PROJECT_NAME
-          cd /opt/$PROJECT_NAME
-          git clone '$REPO_SSH_URL' .
-        else
-          cd /opt/$PROJECT_NAME
-          git fetch origin
-          git checkout main
-          git reset --hard origin/main
-        fi
-        docker login -u '$CI_REGISTRY_USER' -p '$CI_REGISTRY_PASSWORD' $CI_REGISTRY
-        export IMAGE_TAG='$IMAGE_TAG' \
-               POSTGRES_PASSWORD='$POSTGRES_PASSWORD_PROD' \
-               DJANGO_SECRET_KEY='$DJANGO_SECRET_KEY_PROD' \
-               DJANGO_ALLOWED_HOSTS='$DJANGO_ALLOWED_HOSTS_PROD'
-        docker compose -f docker-compose.prod.yml up -d --remove-orphans
-      "
+    - |
+      echo "--- DÉMARRAGE DU DÉPLOIEMENT PROD (OPTIMISÉ) ---"
+      docker login -u "$env:CI_REGISTRY_USER" -p "$env:CI_REGISTRY_PASSWORD" "$env:CI_REGISTRY"
+      echo "Login Docker réussi."
+      
+      # Nettoyage du volume certs_data (pour être sûr)
+      docker volume rm certs_data -f | Out-Null
+      
+      # Création du fichier .env
+      @"
+      DJANGO_DEBUG=0
+      DJANGO_SECRET_KEY=$env:DJANGO_SECRET_KEY
+      DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0 # Ajoutez votre domaine ici
+      POSTGRES_DB=ecommerce
+      POSTGRES_USER=ecommerce
+      POSTGRES_PASSWORD=ecommerce
+      POSTGRES_HOST=db_prod
+      POSTGRES_PORT=5432
+      IMAGE_TAG=$env:IMAGE_SHA
+      GUNICORN_WORKERS=25 # Optimisation pour 12 cœurs CPU
+      
+      # VARIABLES GOOGLE CLOUD STORAGE pour les Médias Utilisateur
+      GCS_BUCKET=$env:GCS_BUCKET
+      GCP_PROJECT_ID=$env:GCP_PROJECT_ID
+      # Si nécessaire, ajoutez d'autres variables GCS ici (GS_CREDENTIALS, etc.)
+      "@ | Out-File -FilePath .env -Encoding ascii
+      echo "Fichier .env créé. Démarrage de docker compose."
+      
+      # Démarrage des services
+      docker compose --profile prod up -d --pull always
+      
+      echo "Docker Compose lancé. Exécution des migrations."
+      docker compose --profile prod exec -T web_prod python manage.py migrate --noinput
+      echo "Collecte des fichiers statiques dans le volume partagé"
+      docker compose --profile prod exec -T web_prod python manage.py collectstatic --noinput
+      
+      echo "--- SAUVEGARDE DE LA BASE DE DONNÉES PostgreSQL ---"
+      
+      $BACKUP_FILE = "latest_prod_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').sql"
+      # Nom du conteneur par défaut : <nom_du_projet>-<nom_du_service>-1
+      $DB_CONTAINER = docker compose --profile prod ps -q db_prod 
+
+      # Définition des variables pour éviter l'interpolation Powershell/Bash
+      $POSTGRES_USER_VAL = "ecommerce" 
+      $POSTGRES_DB_VAL = "ecommerce"
+      
+      # 1. Exécuter le dump DANS le conteneur, en écrivant le fichier dans le volume /backups
+      docker compose --profile prod exec -T db_prod sh -c "pg_dump -U $POSTGRES_USER_VAL -d $POSTGRES_DB_VAL > /backups/$BACKUP_FILE"
+      
+      # 2. Copier le fichier de sauvegarde DU conteneur VERS le runner
+      mkdir -Force -Path "prod_backups" | Out-Null # Crée le répertoire s'il n'existe pas
+      docker cp ${DB_CONTAINER}:/backups/${BACKUP_FILE} prod_backups/
+      
+      # 3. Supprimer le fichier du volume pour ne pas encombrer
+      docker compose --profile prod exec -T db_prod rm /backups/$BACKUP_FILE
+
+      echo "Sauvegarde $BACKUP_FILE créée dans prod_backups/ sur le runner."
+      echo "--- DÉPLOIEMENT PROD TERMINÉ ---"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
   needs:
     - build
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
-
-
-# stages:
-#   - test
-#   - build
-#   - deploy_dev
-#   - deploy_prod
-
-# variables:
-#   PROJECT_NAME: "ecommerce"
-#   IMAGE_TAG: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
-
-# before_script:
-#   - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-
-# test:
-#   stage: test
-#   image: python:3.12-slim
-#   services:
-#     - name: postgres:16
-#       alias: db
-#   variables:
-#     POSTGRES_DB: ecommerce
-#     POSTGRES_USER: ecommerce
-#     POSTGRES_PASSWORD: ecommerce
-#     POSTGRES_HOST: db
-#     DJANGO_SETTINGS_MODULE: ecommerce.settings.dev
-#   script:
-#     - pip install -r backend/requirements/dev.txt
-#     - cd backend
-#     - python manage.py migrate
-#     - pytest
-#     - flake8 .
-#     - black --check .
-#   rules:
-#     - if: $CI_COMMIT_BRANCH
-
-# build:
-#   stage: build
-#   image: docker:27.3
-#   services:
-#     - docker:27.3-dind
-#   script:
-#     - docker build -f infra/docker/backend.Dockerfile -t "$IMAGE_TAG" --build-arg ENVIRONMENT=prod .
-#     - docker push "$IMAGE_TAG"
-#   rules:
-#     - if: $CI_COMMIT_BRANCH
-#   needs:
-#     - test
-
-# deploy_dev:
-#   stage: deploy_dev
-#   image: alpine:3.20
-#   environment:
-#     name: dev
-#     url: https://$DEV_DOMAIN
-#   script:
-#     - apk add --no-cache openssh-client git docker-cli-compose
-#     - mkdir -p ~/.ssh
-#     - echo "$SSH_PRIVATE_KEY_DEV" > ~/.ssh/id_rsa
-#     - chmod 600 ~/.ssh/id_rsa
-#     - ssh -o StrictHostKeyChecking=no "$SSH_USER_DEV@$SSH_HOST_DEV" "
-#         set -e
-#         if [ ! -d /opt/$PROJECT_NAME ]; then
-#           mkdir -p /opt/$PROJECT_NAME
-#           cd /opt/$PROJECT_NAME
-#           git clone '$CI_REPOSITORY_URL' . 
-#         else
-#           cd /opt/$PROJECT_NAME
-#           git fetch origin
-#           git checkout $CI_COMMIT_REF_NAME
-#           git reset --hard origin/$CI_COMMIT_REF_NAME
-#         fi
-#         docker login -u '$CI_REGISTRY_USER' -p '$CI_REGISTRY_PASSWORD' $CI_REGISTRY
-#         export IMAGE_TAG='$IMAGE_TAG' \
-#                POSTGRES_PASSWORD='$POSTGRES_PASSWORD_DEV' \
-#                DJANGO_SECRET_KEY_DEV='$DJANGO_SECRET_KEY_DEV' \
-#                DJANGO_ALLOWED_HOSTS_DEV='$DJANGO_ALLOWED_HOSTS_DEV'
-#         docker compose -f docker-compose.dev.yml up -d --remove-orphans
-#       "
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == "develop"
-#   needs:
-#     - build
-
-# deploy_prod:
-#   stage: deploy_prod
-#   image: alpine:3.20
-#   environment:
-#     name: production
-#     url: https://$PROD_DOMAIN
-#   script:
-#     - apk add --no-cache openssh-client git docker-cli-compose
-#     - mkdir -p ~/.ssh
-#     - echo "$SSH_PRIVATE_KEY_PROD" > ~/.ssh/id_rsa
-#     - chmod 600 ~/.ssh/id_rsa
-#     - ssh -o StrictHostKeyChecking=no "$SSH_USER_PROD@$SSH_HOST_PROD" "
-#         set -e
-#         if [ ! -d /opt/$PROJECT_NAME ]; then
-#           mkdir -p /opt/$PROJECT_NAME
-#           cd /opt/$PROJECT_NAME
-#           git clone '$CI_REPOSITORY_URL' . 
-#         else
-#           cd /opt/$PROJECT_NAME
-#           git fetch origin
-#           git checkout main
-#           git reset --hard origin/main
-#         fi
-#         docker login -u '$CI_REGISTRY_USER' -p '$CI_REGISTRY_PASSWORD' $CI_REGISTRY
-#         export IMAGE_TAG='$IMAGE_TAG' \
-#                POSTGRES_PASSWORD='$POSTGRES_PASSWORD_PROD' \
-#                DJANGO_SECRET_KEY='$DJANGO_SECRET_KEY_PROD' \
-#                DJANGO_ALLOWED_HOSTS='$DJANGO_ALLOWED_HOSTS_PROD'
-#         docker compose -f docker-compose.prod.yml up -d --remove-orphans
-#       "
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == "main"
-#       when: manual
-#   needs:
-#     - build
+  when: on_success

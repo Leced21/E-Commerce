@@ -1,0 +1,31 @@
+<nav class="bg-white shadow-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+            <div class="flex-shrink-0 flex items-center">
+                <a href="/" class="text-2xl font-extrabold text-blue-600 tracking-tight">SHOP_LOGO</a>
+            </div>
+
+            <div class="hidden sm:flex flex-1 mx-8">
+                <div class="relative w-full max-w-lg">
+                    <input type="text" placeholder="Rechercher un produit..." 
+                           class="w-full border border-gray-300 rounded-full py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <div class="absolute left-3 top-2.5 text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-5">
+                <a href="/admin" class="text-gray-600 hover:text-blue-600 font-medium hidden md:block">Admin</a>
+                
+                <a href="/cart" class="relative">
+                    <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                        {{ cart_item_count }}
+                     </span>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>

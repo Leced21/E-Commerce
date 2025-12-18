@@ -14,18 +14,29 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
+from core.views import CreatePaymentIntentView, stripe_webhook
+
 from core import views as core_views
 
 urlpatterns = [
-    path('', core_views.home, name="home"),
-    path('admin/', admin.site.urls),
+    path("", core_views.home, name="home"),
+    path("admin/", admin.site.urls),
+    path(
+        "api/v1/create-payment-intent/",
+        CreatePaymentIntentView.as_view(),
+        name="create-payment-intent",
+    ),
+    path("webhook/stripe/", stripe_webhook, name="stripe-webhook"),
 ]
-if settings.DEBUG:
-    import debug_toolbar
 
+# Debug toolbar uniquement si:
+# - DEBUG est True
+# - et l'app "debug_toolbar" est dans INSTALLED_APPS
+if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:
     urlpatterns += [
         path("__debug__/", include("debug_toolbar.urls")),
     ]
